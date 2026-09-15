@@ -1,0 +1,29 @@
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration
+name = "ReceiveKit"
+client_id = ""
+application_url = "https://example.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[access_scopes]
+# Inventory receive + cost write. Native purchase-order *read* is only on
+# the unstable Admin API with the Physical inventory feature preview.
+# See README.md → API gaps.
+scopes = "read_products,write_products,read_inventory,write_inventory,read_locations,read_inventory_transfers,write_inventory_transfers,write_inventory_shipments,write_inventory_shipments_received_items"
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[webhooks]
+api_version = "2025-10"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"

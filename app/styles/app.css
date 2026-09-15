@@ -1,0 +1,132 @@
+body {
+  margin: 0;
+  background: #f1f1f1;
+}
+
+.rk-table-wrap {
+  overflow-x: auto;
+}
+
+.rk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.rk-table th,
+.rk-table td {
+  text-align: left;
+  padding: 0.7rem 0.6rem;
+  border-bottom: 1px solid #e1e3e5;
+  vertical-align: middle;
+}
+
+.rk-table th {
+  color: #616161;
+  font-weight: 650;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rk-table td.num,
+.rk-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rk-input {
+  width: 5.5rem;
+  border: 1px solid #8a8a8a;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  text-align: right;
+}
+
+.rk-input:focus {
+  outline: 2px solid #005bd3;
+  outline-offset: 1px;
+}
+
+.rk-muted {
+  color: #616161;
+}
+
+.rk-progress {
+  height: 8px;
+  background: #e1e3e5;
+  border-radius: 99px;
+  overflow: hidden;
+  min-width: 72px;
+}
+
+.rk-progress > span {
+  display: block;
+  height: 100%;
+  background: #1a7f37;
+}
+
+.rk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.rk-note {
+  width: 100%;
+  min-height: 4.5rem;
+  border: 1px solid #8a8a8a;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+}
+
+.rk-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.rk-plan {
+  border: 1px solid #e1e3e5;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rk-plan.selected {
+  border-color: #005bd3;
+  box-shadow: 0 0 0 1px #005bd3;
+}
+
+.rk-price {
+  font-size: 1.75rem;
+  font-weight: 650;
+}
+
+.rk-price span {
+  font-size: 0.9rem;
+  color: #616161;
+  font-weight: 400;
+}
+
+@media (max-width: 52rem) {
+  .rk-plan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  s-app-nav,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
