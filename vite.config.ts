@@ -7,12 +7,19 @@ if (
   (!process.env.SHOPIFY_APP_URL ||
     process.env.SHOPIFY_APP_URL === process.env.HOST)
 ) {
-  process.env.SHOPIFY_APP_URL = process.env.HOST;
+  // Only treat HOST as an app URL when it looks like one (Shopify tunnel).
+  // Bare bind addresses like 0.0.0.0 must not become SHOPIFY_APP_URL.
+  const hostCandidate = process.env.HOST;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(hostCandidate)) {
+    process.env.SHOPIFY_APP_URL = hostCandidate;
+  }
   delete process.env.HOST;
 }
 
-const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
-  .hostname;
+const appUrl = process.env.SHOPIFY_APP_URL || "http://localhost";
+const host = new URL(
+  /^[a-z][a-z0-9+.-]*:\/\//i.test(appUrl) ? appUrl : `http://${appUrl}`,
+).hostname;
 
 let hmrConfig;
 if (host === "localhost" || host === "127.0.0.1") {

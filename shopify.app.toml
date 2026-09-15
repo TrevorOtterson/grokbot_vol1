@@ -1,15 +1,14 @@
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration
 name = "ReceiveKit"
-client_id = ""
+client_id = "36a0a9aa745cf78c3a96d05f42bc043e"
 # After `fly launch`, set these to the Fly hostname (no trailing slash), then
 # `shopify app deploy`. Example: https://<your-app>.fly.dev
 # SHOPIFY_APP_URL is a Fly secret — do not commit the real value.
-application_url = "https://example.com"
+application_url = "https://receivekit.fly.dev"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [access_scopes]
 # Inventory receive + cost write. Native purchase-order *read* is only on
@@ -18,7 +17,7 @@ include_config_on_deploy = true
 scopes = "read_products,write_products,read_inventory,write_inventory,read_locations,read_inventory_transfers,write_inventory_transfers,write_inventory_shipments,write_inventory_shipments_received_items"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://receivekit.fly.dev/api/auth" ]
 
 [webhooks]
 api_version = "2025-10"
