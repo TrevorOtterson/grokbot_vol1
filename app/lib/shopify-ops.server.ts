@@ -282,10 +282,3 @@ export async function writeReceiveToShopify(options: {
     lines: results,
   };
 }
-
-export function shopifyWriteLabel(status: string) {
-  if (status === "written") return "Shopify qty + cost written";
-  if (status === "partial") return "Shopify write partial";
-  if (status === "skipped") return "Locked in ReceiveKit only";
-  return "Demo — not written to Shopify";
-}

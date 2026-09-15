@@ -15,9 +15,12 @@ import {
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { formatMoney } from "../lib/money";
 import { applyReceive, getPurchaseOrder } from "../lib/po.server";
-import { remainingQuantity, weightedAverageCost } from "../lib/receive";
+import {
+  remainingQuantity,
+  shopifyWriteLabel,
+  weightedAverageCost,
+} from "../lib/receive";
 import { requireShop } from "../lib/session.server";
-import { shopifyWriteLabel } from "../lib/shopify-ops.server";
 import { formatDate, StatusBadge } from "../lib/ui";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {

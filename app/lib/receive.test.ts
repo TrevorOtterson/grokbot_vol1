@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   poStatusFromLines,
   remainingQuantity,
+  shopifyWriteLabel,
   validateReceive,
   weightedAverageCost,
 } from "./receive";
@@ -76,4 +77,9 @@ test("validateReceive rejects over-receive and empty submits", () => {
   ]);
   assert.equal(accepted.length, 1);
   assert.equal(accepted[0].averageCostWritten, "15.6000");
+});
+
+test("shopifyWriteLabel covers demo and live write states", () => {
+  assert.equal(shopifyWriteLabel("demo"), "Demo — not written to Shopify");
+  assert.equal(shopifyWriteLabel("written"), "Shopify qty + cost written");
 });

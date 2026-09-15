@@ -20,10 +20,17 @@ export default function App() {
 
   const chrome = (
     <>
-      <s-app-nav>
-        <s-link href="/app">Purchase orders</s-link>
-        <s-link href="/app/billing">Billing</s-link>
-      </s-app-nav>
+      {demo ? (
+        <nav className="rk-demo-nav">
+          <a href="/app">Purchase orders</a>
+          <a href="/app/billing">Billing</a>
+        </nav>
+      ) : (
+        <s-app-nav>
+          <s-link href="/app">Purchase orders</s-link>
+          <s-link href="/app/billing">Billing</s-link>
+        </s-app-nav>
+      )}
       {demo ? (
         <s-box padding="base">
           <s-banner heading="Demo mode" tone="info">

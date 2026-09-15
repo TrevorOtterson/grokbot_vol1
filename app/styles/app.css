@@ -3,6 +3,25 @@ body {
   background: #f1f1f1;
 }
 
+.rk-demo-nav {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: #fff;
+  border-bottom: 1px solid #e1e3e5;
+  font-size: 0.9rem;
+}
+
+.rk-demo-nav a {
+  color: #005bd3;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.rk-demo-nav a:hover {
+  text-decoration: underline;
+}
+
 .rk-table-wrap {
   overflow-x: auto;
 }
