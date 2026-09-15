@@ -7,9 +7,7 @@ import { formatMoney } from "../lib/money";
 import { getPurchaseOrder } from "../lib/po.server";
 import { requireShop } from "../lib/session.server";
 import { formatDate } from "../lib/ui";
-import labelStyles from "../styles/labels.css?url";
-
-export const links = () => [{ rel: "stylesheet", href: labelStyles }];
+import "../styles/labels.css";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const shop = await requireShop(request);

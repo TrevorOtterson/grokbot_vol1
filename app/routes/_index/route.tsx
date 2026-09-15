@@ -2,9 +2,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { Form, Link, redirect, useLoaderData } from "react-router";
 import { isDemoMode } from "../../lib/demo.server";
 import { login } from "../../shopify.server";
-import styles from "../../styles/landing.css?url";
-
-export const links = () => [{ rel: "stylesheet", href: styles }];
+import "../../styles/landing.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);

@@ -3,9 +3,7 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { requireShop } from "../lib/session.server";
-import appStyles from "../styles/app.css?url";
-
-export const links = () => [{ rel: "stylesheet", href: appStyles }];
+import "../styles/app.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const shop = await requireShop(request);
