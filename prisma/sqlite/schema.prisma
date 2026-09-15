@@ -1,0 +1,108 @@
+// Local SQLite schema (demo / shopify app dev).
+// Production uses prisma/schema.prisma (postgresql + DATABASE_URL).
+// `scripts/db.mjs` picks this file when DATABASE_URL is not postgres.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../dev.sqlite"
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model ShopState {
+  shop          String    @id
+  plan          String    @default("none")
+  billingStatus String    @default("inactive")
+  lastSyncAt    DateTime?
+  lastSyncNote  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PurchaseOrder {
+  id                 String              @id
+  shop               String
+  number             String
+  supplierName       String
+  destinationName    String
+  expectedOn         DateTime?
+  status             String
+  notes              String?
+  source             String              @default("app")
+  shopifyGid         String?
+  shopifyTransferGid String?
+  locationGid        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  lines              PurchaseOrderLine[]
+  receipts           Receipt[]
+
+  @@index([shop, status])
+  @@unique([shop, number])
+}
+
+model PurchaseOrderLine {
+  id                String        @id
+  purchaseOrderId   String
+  sku               String
+  title             String
+  barcode           String?
+  quantityOrdered   Int
+  quantityReceived  Int           @default(0)
+  unitCost          String
+  lockedUnitCost    String?
+  lockedAverageCost String?
+  costLockedAt      DateTime?
+  inventoryItemGid  String?
+  variantGid        String?
+  shopifyLineGid    String?
+  purchaseOrder     PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  receiptLines      ReceiptLine[]
+}
+
+model Receipt {
+  id                 String        @id
+  shop               String
+  purchaseOrderId    String
+  receivedAt         DateTime      @default(now())
+  notes              String?
+  shopifyWriteStatus String        @default("demo")
+  shopifyWriteDetail String?
+  purchaseOrder      PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  lines              ReceiptLine[]
+}
+
+model ReceiptLine {
+  id                  String            @id
+  receiptId           String
+  purchaseOrderLineId String
+  quantityAccepted    Int
+  unitCost            String
+  averageCostWritten  String
+  shopifyQtyOk        Boolean           @default(false)
+  shopifyCostOk       Boolean           @default(false)
+  receipt             Receipt           @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  purchaseOrderLine   PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id], onDelete: Cascade)
+}

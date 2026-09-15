@@ -51,14 +51,15 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
 
 | Variable | Purpose |
 | --- | --- |
-| `DEMO_MODE` | `true` skips OAuth and seeds demo POs |
-| `PORT` | Dev server port (default **43173**) |
-| `SHOPIFY_APP_URL` | Public app URL (CLI sets this) |
+| `DEMO_MODE` | `true` skips OAuth and seeds demo POs. **`false` or unset on Fly prod.** |
+| `PORT` | Dev **43173**; Fly / Docker **3000** |
+| `DATABASE_URL` | Unset locally (SQLite). Postgres URL on Fly from `fly postgres attach`. |
+| `SHOPIFY_APP_URL` | Public app URL (CLI sets this in dev). On Fly: `https://<your-app>.fly.dev` |
 | `SHOPIFY_API_KEY` | App client ID |
 | `SHOPIFY_API_SECRET` | App secret |
 | `SCOPES` | Must match `shopify.app.toml` |
 | `SHOP_CUSTOM_DOMAIN` | Optional custom shop domain |
-| `BILLING_TEST_MODE` | Default `true` — Shopify test charges |
+| `BILLING_TEST_MODE` | Default `true` — Shopify test charges. **`false` on Fly prod only.** |
 
 ## Partner Dashboard / Dev Dashboard setup
 
@@ -73,9 +74,8 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
    - `read_locations`
    - `read_inventory_transfers,write_inventory_transfers`
    - `write_inventory_shipments,write_inventory_shipments_received_items`
-7. Webhooks in the TOML already subscribe to `app/uninstalled` and `app/scopes_update`.
-8. For App Store later, add GDPR compliance webhooks (`customers/data_request`, `customers/redact`, `shop/redact`) — they are commented in `shopify.app.toml` until you ship public distribution.
-9. Billing: keep **test charges** enabled while developing. Plans are declared in `app/shopify.server.ts` (`Dock` / `Floor` / `Yard`).
+7. Webhooks in the TOML subscribe to `app/uninstalled`, `app/scopes_update`, and the three mandatory GDPR topics (`customers/data_request`, `customers/redact`, `shop/redact`).
+8. Billing: keep **test charges** enabled while developing. Plans are declared in `app/shopify.server.ts` (`Dock` / `Floor` / `Yard`). Set `BILLING_TEST_MODE=false` only on the Fly production app.
 
 ## Test store steps
 
@@ -92,6 +92,52 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
 7. Confirm in Shopify admin that `InventoryItem` unit cost changed **only if** the line had an InventoryItem GID (imported transfers do; demo-only lines do not).
 
 To reset demo data, delete `prisma/dev.sqlite` and run `npm run setup`.
+
+## Production (Fly.io + Postgres)
+
+One stack: **Fly Machines from the existing Dockerfile** (port **3000**) + **Fly Postgres**. Do not commit secrets.
+
+1. `fly auth login` and from this repo: `fly launch` (keep the existing Dockerfile; set `internal_port` **3000**).
+2. `fly postgres create` then `fly postgres attach <db-app>` (sets `DATABASE_URL`).
+3. Set secrets (values stay on Fly — never in git):
+
+   ```bash
+   fly secrets set \
+     SHOPIFY_API_KEY= \
+     SHOPIFY_API_SECRET= \
+     SCOPES=read_products,write_products,read_inventory,write_inventory,read_locations,read_inventory_transfers,write_inventory_transfers,write_inventory_shipments,write_inventory_shipments_received_items \
+     SHOPIFY_APP_URL=https://<your-app>.fly.dev \
+     BILLING_TEST_MODE=false \
+     DEMO_MODE=false
+   ```
+
+   `SHOPIFY_APP_URL` is the public HTTPS origin, no trailing slash. Replace `<your-app>.fly.dev` with the hostname `fly launch` prints.
+
+4. `fly deploy`. Boot runs `npm run docker-start`: Prisma generate + `migrate deploy` (Postgres, no seed) then `npm run start`.
+5. Point `shopify.app.toml` `application_url` and `[auth] redirect_urls` at that Fly origin, then `npm run deploy` / `shopify app deploy`.
+
+Dockerfile `ENV PORT=3000` matches Fly `internal_port`. `NODE_ENV=production` is already set in the image.
+
+**Prisma:** production schema is `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")`). `prisma migrate deploy` applies `prisma/migrations/` on Postgres. Local demo keeps SQLite via `prisma/sqlite/schema.prisma` and `prisma/sqlite/migrations/` — `npm run setup` / `npm run demo` pick SQLite unless `DATABASE_URL` starts with `postgres`.
+
+Do **not** set `BILLING_TEST_MODE=false` on receivekit-dev or local `.env`.
+
+## GDPR / privacy
+
+Mandatory App Store compliance webhooks are implemented and declared in `shopify.app.toml`:
+
+| Topic | Route | What ReceiveKit does |
+| --- | --- | --- |
+| `customers/data_request` | `/webhooks/customers/data_request` | HMAC via `authenticate.webhook`; 200. No storefront customer profiles to export. |
+| `customers/redact` | `/webhooks/customers/redact` | HMAC; 200. No shopper PII to delete (`Session.email` is merchant staff OAuth). |
+| `shop/redact` | `/webhooks/shop/redact` | HMAC; deletes sessions, shop state, and receive/PO rows for that shop. |
+| `app/uninstalled` | `/webhooks/app/uninstalled` | Deletes **Session** rows immediately. |
+
+Invalid HMAC fails authentication (401). Valid webhooks are acknowledged with an empty 200. Payloads that include customer email/phone are not logged.
+
+**Honesty:** ReceiveKit stores shop domain, OAuth tokens, purchase-order / receive / unit-cost records — not storefront shopper profiles. The three GDPR endpoints are still required for public apps.
+
+Listing privacy policy URL: [https://bejewelled-kashata-9c39f8.netlify.app/](https://bejewelled-kashata-9c39f8.netlify.app/)
 
 ### QA on receivekit-dev
 
@@ -135,24 +181,25 @@ ReceiveKit therefore:
 Not required to run the MVP. Needed before a public listing:
 
 - [ ] Partner app record, branding, and `client_id` committed via `shopify app config link`
-- [ ] Production host (Fly, Render, Railway, etc.) with `npm run build` && `npm run start`
-- [ ] Postgres (or similar) instead of SQLite `file:dev.sqlite`
-- [ ] GDPR compliance webhooks implemented and declared in TOML
-- [ ] Privacy policy URL and app listing copy (receive / labels / cost only — do not promise Stocky parity)
+- [ ] Production host: Fly.io from this Dockerfile (`PORT=3000`, `npm run docker-start`)
+- [x] Postgres schema + `prisma migrate deploy` path (`prisma/schema.prisma`); local SQLite dual schema documented
+- [x] GDPR compliance webhooks implemented and declared in TOML
+- [x] Privacy policy URL: https://bejewelled-kashata-9c39f8.netlify.app/ (paste on the listing; copy is receive / labels / cost only — do not promise Stocky parity)
 - [ ] Screenshots: PO list, receive with partials, label sheet, billing
-- [ ] Recurring charges Dock/Floor/Yard configured; test mode off for production
+- [ ] Recurring charges Dock/Floor/Yard configured; `BILLING_TEST_MODE=false` on Fly prod only
 - [ ] App review notes explaining PO API limits (unstable read, receive via transfer/adjust, cost = `InventoryItem.cost`)
 - [ ] Theme app extension: **not used** (admin-only)
 - [ ] Built for Shopify: performance, session token auth (this template), and no blocked checkout APIs
-- [ ] Support contact and uninstall webhook wiping `Session` rows (already in `webhooks.app.uninstalled.tsx`)
+- [x] Support contact and uninstall webhook wiping `Session` rows (`webhooks.app.uninstalled.tsx`); `shop/redact` wipes remaining shop data
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
-| `npm run demo` | Prisma migrate + seed + React Router dev on port 43173 |
+| `npm run demo` | SQLite migrate + seed + React Router dev on port 43173 |
 | `npm run dev` | `shopify app dev` (OAuth, tunnel, embed) |
-| `npm run setup` | `prisma generate && migrate deploy && seed` |
+| `npm run setup` | Generate + migrate deploy + seed (SQLite unless `DATABASE_URL` is Postgres) |
+| `npm run docker-start` | Generate + `prisma migrate deploy` (no seed) + production start |
 | `npm run build` / `npm start` | Production server |
 | `npm test` | Receive / money unit tests |
 | `npm run typecheck` | `react-router typegen && tsc` |
@@ -160,7 +207,7 @@ Not required to run the MVP. Needed before a public listing:
 
 ## Stack
 
-Official **Shopify app template — React Router 7** (current CLI default; successor to the Remix template). Polaris web components, App Bridge, Prisma/SQLite, Admin GraphQL 2025-10.
+Official **Shopify app template — React Router 7** (current CLI default; successor to the Remix template). Polaris web components, App Bridge, Prisma (SQLite locally, Postgres on Fly), Admin GraphQL 2025-10.
 
 ## License
 

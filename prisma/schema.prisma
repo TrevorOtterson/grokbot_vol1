@@ -1,10 +1,14 @@
+// Production schema: Fly Postgres via DATABASE_URL.
+// Local demo / `shopify app dev` use prisma/sqlite/schema.prisma when
+// DATABASE_URL is not a postgres URL (`npm run setup`, `npm run demo`).
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -28,13 +32,13 @@ model Session {
 }
 
 model ShopState {
-  shop             String    @id
-  plan             String    @default("none")
-  billingStatus    String    @default("inactive")
-  lastSyncAt       DateTime?
-  lastSyncNote     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  shop          String    @id
+  plan          String    @default("none")
+  billingStatus String    @default("inactive")
+  lastSyncAt    DateTime?
+  lastSyncNote  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model PurchaseOrder {
@@ -79,15 +83,15 @@ model PurchaseOrderLine {
 }
 
 model Receipt {
-  id                  String        @id
-  shop                String
-  purchaseOrderId     String
-  receivedAt          DateTime      @default(now())
-  notes               String?
-  shopifyWriteStatus  String        @default("demo")
-  shopifyWriteDetail  String?
-  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  lines               ReceiptLine[]
+  id                 String        @id
+  shop               String
+  purchaseOrderId    String
+  receivedAt         DateTime      @default(now())
+  notes              String?
+  shopifyWriteStatus String        @default("demo")
+  shopifyWriteDetail String?
+  purchaseOrder      PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  lines              ReceiptLine[]
 }
 
 model ReceiptLine {
