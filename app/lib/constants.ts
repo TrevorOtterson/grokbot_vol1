@@ -3,6 +3,9 @@ export const DEMO_SHOP = "demo-receivekit.myshopify.com";
 /** Open sample PO created by ensureDemoSeed — keep in sync with seed.server. */
 export const SAMPLE_OPEN_PO_NUMBER = "PO-1042";
 
+/** Free trial on Dock, Floor, and Yard — matches the App Store listing. */
+export const TRIAL_DAYS = 14;
+
 export const PLANS = [
   {
     key: "dock",

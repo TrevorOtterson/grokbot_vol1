@@ -12,6 +12,7 @@ type BillingApi = {
   request: (options: {
     plan: string;
     isTest?: boolean;
+    trialDays?: number;
     returnUrl?: string;
   }) => Promise<never>;
 };

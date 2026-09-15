@@ -14,7 +14,7 @@ That is the whole product. If a feature is not receive, labels, or cost-at-recei
 | Unit cost snapshot on each receipt | B2B portal |
 | Write `InventoryItem.cost` when Admin GraphQL allows | Reorder, catalogs, net terms, AI |
 
-Plans are billing stubs only: **Dock $49 / Floor $79 / Yard $99** per 30 days. This MVP does not feature-gate those prices.
+Plans are billing stubs only: **Dock $49 / Floor $79 / Yard $99** per 30 days with a **14-day free trial** (`trialDays: 14` on all three plans in `app/shopify.server.ts`). This MVP does not feature-gate those prices.
 
 ## Quick start
 
@@ -75,7 +75,7 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
    - `read_inventory_transfers,write_inventory_transfers`
    - `write_inventory_shipments,write_inventory_shipments_received_items`
 7. Webhooks in the TOML subscribe to `app/uninstalled`, `app/scopes_update`, and the three mandatory GDPR topics (`customers/data_request`, `customers/redact`, `shop/redact`).
-8. Billing: keep **test charges** enabled while developing. Plans are declared in `app/shopify.server.ts` (`Dock` / `Floor` / `Yard`). Set `BILLING_TEST_MODE=false` only on the Fly production app.
+8. Billing: keep **test charges** enabled while developing. Plans are declared in `app/shopify.server.ts` (`Dock` / `Floor` / `Yard`, each with `trialDays: 14`). Set `BILLING_TEST_MODE=false` only on the Fly production app.
 
 ## Test store steps
 
@@ -88,7 +88,7 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
    If sync returns nothing, the shop has no open inbound transfers — seed for practice, then receive PO-1042.
 4. Open a PO → enter accept quantities (or **Fill remaining**) → set unit cost → **Receive and lock cost**.
 5. Print labels: 3-up letter sheet, CODE128, browser Print to PDF.
-6. **Billing**: pick Dock/Floor/Yard. Approve the **test** recurring charge. You should return to `/app/billing`.
+6. **Billing**: pick Dock/Floor/Yard. Approve the **test** recurring charge (Shopify charge screen should show the **14-day free trial**). You should return to `/app/billing`.
 7. Confirm in Shopify admin that `InventoryItem` unit cost changed **only if** the line had an InventoryItem GID (imported transfers do; demo-only lines do not).
 
 To reset demo data, delete `prisma/dev.sqlite` and run `npm run setup`.
@@ -113,7 +113,7 @@ One stack: **Fly Machines from the existing Dockerfile** (port **3000**) + **Fly
 
    `SHOPIFY_APP_URL` is the public HTTPS origin, no trailing slash. Replace `<your-app>.fly.dev` with the hostname `fly launch` prints.
 
-4. `fly deploy`. Boot runs `npm run docker-start`: Prisma generate + `migrate deploy` (Postgres, no seed) then `npm run start`.
+4. `fly deploy`. Boot runs `npm run docker-start`: Prisma generate + `migrate deploy` (Postgres, no seed) then `npm run start`. Billing (`trialDays` and plan prices) is in `app/shopify.server.ts`, so a Fly deploy is required to ship App Billing changes — `shopify app deploy` alone is not enough.
 5. Point `shopify.app.toml` `application_url` and `[auth] redirect_urls` at that Fly origin, then `npm run deploy` / `shopify app deploy`.
 
 Dockerfile `ENV PORT=3000` matches Fly `internal_port`. `NODE_ENV=production` is already set in the image.
@@ -186,7 +186,7 @@ Not required to run the MVP. Needed before a public listing:
 - [x] GDPR compliance webhooks implemented and declared in TOML
 - [x] Privacy policy URL: https://bejewelled-kashata-9c39f8.netlify.app/ (paste on the listing; copy is receive / labels / cost only — do not promise Stocky parity)
 - [ ] Screenshots: PO list, receive with partials, label sheet, billing
-- [ ] Recurring charges Dock/Floor/Yard configured; `BILLING_TEST_MODE=false` on Fly prod only
+- [ ] Recurring charges Dock/Floor/Yard with a 14-day free trial; `BILLING_TEST_MODE=false` on Fly prod only
 - [ ] App review notes explaining PO API limits (unstable read, receive via transfer/adjust, cost = `InventoryItem.cost`)
 - [ ] Theme app extension: **not used** (admin-only)
 - [ ] Built for Shopify: performance, session token auth (this template), and no blocked checkout APIs

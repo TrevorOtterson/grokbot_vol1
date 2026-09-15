@@ -147,6 +147,13 @@ body {
   font-weight: 400;
 }
 
+.rk-trial {
+  margin: -0.4rem 0 0;
+  font-size: 0.9rem;
+  color: #0c5132;
+  font-weight: 550;
+}
+
 @media (max-width: 52rem) {
   .rk-plan-grid {
     grid-template-columns: 1fr;

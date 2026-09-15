@@ -5,7 +5,14 @@ import type {
 } from "react-router";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { DOCK_PLAN, FLOOR_PLAN, PLANS, YARD_PLAN, type PlanKey } from "../lib/constants";
+import {
+  DOCK_PLAN,
+  FLOOR_PLAN,
+  PLANS,
+  TRIAL_DAYS,
+  YARD_PLAN,
+  type PlanKey,
+} from "../lib/constants";
 import { requireShop } from "../lib/session.server";
 import { getShopState } from "../lib/sync.server";
 import prisma from "../db.server";
@@ -63,13 +70,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (shop.demo || !shop.billing) {
     return {
       ok: true,
-      message: `Demo: ${PLAN_NAME[plan]} selected at $${PLANS.find((item) => item.key === plan)?.price}/30 days. Shopify App Billing is not charged in demo mode.`,
+      message: `Demo: ${PLAN_NAME[plan]} selected at $${PLANS.find((item) => item.key === plan)?.price}/30 days after a ${TRIAL_DAYS}-day free trial. Shopify App Billing is not charged in demo mode.`,
     };
   }
 
   return shop.billing.request({
     plan: PLAN_NAME[plan],
     isTest: shop.billingTest,
+    trialDays: TRIAL_DAYS,
     returnUrl: `${process.env.SHOPIFY_APP_URL}/app/billing`,
   });
 };
@@ -85,9 +93,9 @@ export default function BillingPage() {
     <s-page heading="Billing">
       <s-section heading="Shopify App Billing stubs">
         <s-paragraph>
-          Three monthly plans. This MVP does not gate receive, labels, or cost
-          on plan — start on Dock unless you already know you need a higher
-          listed price.
+          Three monthly plans, each with a {TRIAL_DAYS}-day free trial. This
+          MVP does not gate receive, labels, or cost on plan — start on Dock
+          unless you already know you need a higher listed price.
         </s-paragraph>
         {data.demo ? (
           <s-banner heading="Demo billing" tone="info">
@@ -122,6 +130,7 @@ export default function BillingPage() {
                 ${plan.price}
                 <span> / 30 days</span>
               </div>
+              <p className="rk-trial">{TRIAL_DAYS}-day free trial</p>
               <s-paragraph>{plan.blurb}</s-paragraph>
               <s-unordered-list>
                 {plan.points.map((point) => (

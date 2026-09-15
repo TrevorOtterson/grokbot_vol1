@@ -7,7 +7,7 @@ import {
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
-import { DOCK_PLAN, FLOOR_PLAN, YARD_PLAN } from "./lib/constants";
+import { DOCK_PLAN, FLOOR_PLAN, TRIAL_DAYS, YARD_PLAN } from "./lib/constants";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY || "00000000000000000000000000000000",
@@ -20,6 +20,7 @@ const shopify = shopifyApp({
   distribution: AppDistribution.AppStore,
   billing: {
     [DOCK_PLAN]: {
+      trialDays: TRIAL_DAYS,
       lineItems: [
         {
           amount: 49,
@@ -29,6 +30,7 @@ const shopify = shopifyApp({
       ],
     },
     [FLOOR_PLAN]: {
+      trialDays: TRIAL_DAYS,
       lineItems: [
         {
           amount: 79,
@@ -38,6 +40,7 @@ const shopify = shopifyApp({
       ],
     },
     [YARD_PLAN]: {
+      trialDays: TRIAL_DAYS,
       lineItems: [
         {
           amount: 99,
