@@ -1,5 +1,8 @@
 export const DEMO_SHOP = "demo-receivekit.myshopify.com";
 
+/** Open sample PO created by ensureDemoSeed — keep in sync with seed.server. */
+export const SAMPLE_OPEN_PO_NUMBER = "PO-1042";
+
 export const PLANS = [
   {
     key: "dock",
@@ -20,7 +23,7 @@ export const PLANS = [
     points: [
       "Everything in Dock",
       "Shopify transfer / shipment receive when APIs allow",
-      "Test-mode App Billing included",
+      "Same receive flow as volume and locations grow",
     ],
   },
   {

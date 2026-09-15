@@ -85,9 +85,9 @@ export default function BillingPage() {
     <s-page heading="Billing">
       <s-section heading="Shopify App Billing stubs">
         <s-paragraph>
-          Three monthly plans via <code>appSubscriptionCreate</code> (test
-          charges by default). This MVP does not gate features on plan — the
-          charge is the stub merchants will see in a development store.
+          Three monthly plans. This MVP does not gate receive, labels, or cost
+          on plan — start on Dock unless you already know you need a higher
+          listed price.
         </s-paragraph>
         {data.demo ? (
           <s-banner heading="Demo billing" tone="info">

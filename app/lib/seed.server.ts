@@ -1,11 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import prisma from "../db.server";
-import { DEMO_SHOP } from "./constants";
+import { DEMO_SHOP, SAMPLE_OPEN_PO_NUMBER } from "./constants";
 
 const demoPos = [
   {
     id: "po_open_apex",
-    number: "PO-1042",
+    number: SAMPLE_OPEN_PO_NUMBER,
     supplierName: "Apex Apparel Co.",
     destinationName: "Warehouse A — receiving dock",
     expectedOn: daysFromNow(2),
@@ -128,25 +128,58 @@ function daysFromNow(days: number) {
   return date;
 }
 
+/** Stable per-shop suffix so sample PO/receipt ids do not collide across shops. */
+export function shopSeedKey(shop: string) {
+  if (shop === DEMO_SHOP) return "";
+  const base = shop
+    .toLowerCase()
+    .replace(/\.myshopify\.com$/i, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 40);
+  const hash = createHash("sha256").update(shop).digest("hex").slice(0, 8);
+  return `${base || "shop"}_${hash}`;
+}
+
+export function scopedSeedId(shop: string, id: string) {
+  const key = shopSeedKey(shop);
+  return key ? `${id}_${key}` : id;
+}
+
+export function seededReadyMessage() {
+  return `3 sample POs ready — open ${SAMPLE_OPEN_PO_NUMBER} to receive.`;
+}
+
 export async function ensureDemoSeed(shop = DEMO_SHOP) {
+  const demoShop = shop === DEMO_SHOP;
+
   await prisma.shopState.upsert({
     where: { shop },
     update: {},
-    create: {
-      shop,
-      plan: "dock",
-      billingStatus: "demo",
-      lastSyncNote: "Demo catalog. Shopify Admin is not connected.",
-    },
+    create: demoShop
+      ? {
+          shop,
+          plan: "dock",
+          billingStatus: "demo",
+          lastSyncNote: "Demo catalog. Shopify Admin is not connected.",
+        }
+      : {
+          shop,
+          lastSyncNote:
+            "Empty dock — sync Shopify transfers or seed sample receives.",
+        },
   });
 
   const existing = await prisma.purchaseOrder.count({ where: { shop } });
-  if (existing > 0) return { shop, seeded: false };
+  if (existing > 0) return { shop, seeded: false, count: existing };
+
+  const idFor = (id: string) => scopedSeedId(shop, id);
 
   for (const po of demoPos) {
+    const poId = idFor(po.id);
     await prisma.purchaseOrder.create({
       data: {
-        id: po.id,
+        id: poId,
         shop,
         number: po.number,
         supplierName: po.supplierName,
@@ -157,7 +190,7 @@ export async function ensureDemoSeed(shop = DEMO_SHOP) {
         source: po.source,
         lines: {
           create: po.lines.map((line) => ({
-            id: `${po.id}_${line.sku}`,
+            id: `${poId}_${line.sku}`,
             sku: line.sku,
             title: line.title,
             barcode: line.barcode,
@@ -167,8 +200,7 @@ export async function ensureDemoSeed(shop = DEMO_SHOP) {
             lockedUnitCost: "lockedUnitCost" in line ? line.lockedUnitCost : null,
             lockedAverageCost:
               "lockedAverageCost" in line ? line.lockedAverageCost : null,
-            costLockedAt:
-              line.quantityReceived > 0 ? daysFromNow(-1) : null,
+            costLockedAt: line.quantityReceived > 0 ? daysFromNow(-1) : null,
           })),
         },
       },
@@ -176,29 +208,30 @@ export async function ensureDemoSeed(shop = DEMO_SHOP) {
   }
 
   const partial = demoPos[1];
+  const partialId = idFor(partial.id);
   const tote = partial.lines[0];
   const cap = partial.lines[1];
   await prisma.receipt.create({
     data: {
-      id: "rcpt_northline_1",
+      id: idFor("rcpt_northline_1"),
       shop,
-      purchaseOrderId: partial.id,
+      purchaseOrderId: partialId,
       receivedAt: daysFromNow(-3),
       notes: "First pallet.",
       shopifyWriteStatus: "demo",
-      shopifyWriteDetail: "Demo seed — no Shopify write.",
+      shopifyWriteDetail: "Sample receive — no Shopify write.",
       lines: {
         create: [
           {
             id: randomUUID(),
-            purchaseOrderLineId: `${partial.id}_${tote.sku}`,
+            purchaseOrderLineId: `${partialId}_${tote.sku}`,
             quantityAccepted: tote.quantityReceived,
             unitCost: tote.unitCost,
             averageCostWritten: tote.unitCost,
           },
           {
             id: randomUUID(),
-            purchaseOrderLineId: `${partial.id}_${cap.sku}`,
+            purchaseOrderLineId: `${partialId}_${cap.sku}`,
             quantityAccepted: cap.quantityReceived,
             unitCost: cap.unitCost,
             averageCostWritten: cap.unitCost,
@@ -209,19 +242,20 @@ export async function ensureDemoSeed(shop = DEMO_SHOP) {
   });
 
   const received = demoPos[2];
+  const receivedId = idFor(received.id);
   await prisma.receipt.create({
     data: {
-      id: "rcpt_harbor_1",
+      id: idFor("rcpt_harbor_1"),
       shop,
-      purchaseOrderId: received.id,
+      purchaseOrderId: receivedId,
       receivedAt: daysFromNow(-18),
       notes: "Full receipt.",
       shopifyWriteStatus: "demo",
-      shopifyWriteDetail: "Demo seed — no Shopify write.",
+      shopifyWriteDetail: "Sample receive — no Shopify write.",
       lines: {
         create: received.lines.map((line) => ({
           id: randomUUID(),
-          purchaseOrderLineId: `${received.id}_${line.sku}`,
+          purchaseOrderLineId: `${receivedId}_${line.sku}`,
           quantityAccepted: line.quantityReceived,
           unitCost: line.lockedUnitCost ?? line.unitCost,
           averageCostWritten: line.lockedAverageCost ?? line.unitCost,
@@ -230,5 +264,14 @@ export async function ensureDemoSeed(shop = DEMO_SHOP) {
     },
   });
 
-  return { shop, seeded: true };
+  if (!demoShop) {
+    await prisma.shopState.update({
+      where: { shop },
+      data: {
+        lastSyncNote: `${seededReadyMessage()} Practice data, not Shopify transfers.`,
+      },
+    });
+  }
+
+  return { shop, seeded: true, count: demoPos.length };
 }

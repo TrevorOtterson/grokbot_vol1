@@ -23,11 +23,13 @@ export default function App() {
       {demo ? (
         <nav className="rk-demo-nav">
           <a href="/app">Purchase orders</a>
+          <a href="/app/help">First receive</a>
           <a href="/app/billing">Billing</a>
         </nav>
       ) : (
         <s-app-nav>
           <s-link href="/app">Purchase orders</s-link>
+          <s-link href="/app/help">First receive</s-link>
           <s-link href="/app/billing">Billing</s-link>
         </s-app-nav>
       )}

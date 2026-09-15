@@ -7,6 +7,7 @@ import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-r
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { listPurchaseOrders } from "../lib/po.server";
 import { remainingQuantity } from "../lib/receive";
+import { ensureDemoSeed, seededReadyMessage } from "../lib/seed.server";
 import { requireShop } from "../lib/session.server";
 import { getShopState, syncFromShopify } from "../lib/sync.server";
 import { formatDate, StatusBadge } from "../lib/ui";
@@ -50,9 +51,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const shop = await requireShop(request);
+  const form = await request.formData();
+  const intent = String(form.get("intent") || "sync");
+
+  if (intent === "seed") {
+    const result = await ensureDemoSeed(shop.shop);
+    if (result.seeded) {
+      return { ok: true, intent: "seed" as const, message: seededReadyMessage() };
+    }
+    return {
+      ok: true,
+      intent: "seed" as const,
+      message: "This shop already has purchase orders. Seed is only for an empty dock.",
+    };
+  }
+
   if (shop.demo || !shop.admin) {
     return {
       ok: false,
+      intent: "sync" as const,
       message: "Connect a Shopify store with shopify app dev to sync transfers.",
     };
   }
@@ -62,15 +79,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     admin: shop.admin,
     accessToken: shop.session?.accessToken,
   });
-  return { ok: true, message: result.lastSyncNote };
+  return { ok: true, intent: "sync" as const, message: result.lastSyncNote };
 };
 
 export default function PurchaseOrderList() {
   const data = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
-  const syncing = navigation.state !== "idle" && navigation.formData?.get("intent") === "sync";
+  const syncing =
+    navigation.state !== "idle" && navigation.formData?.get("intent") === "sync";
+  const seeding =
+    navigation.state !== "idle" && navigation.formData?.get("intent") === "seed";
   const openCount = data.orders.filter((order) => order.status !== "received").length;
+  const bannerHeading =
+    actionData?.intent === "seed"
+      ? "Sample receives"
+      : actionData?.ok
+        ? "Shopify sync"
+        : "Sync skipped";
 
   return (
     <s-page heading="Purchase orders">
@@ -93,7 +119,7 @@ export default function PurchaseOrderList() {
         </s-paragraph>
         {actionData?.message ? (
           <s-banner
-            heading={actionData.ok ? "Shopify sync" : "Sync skipped"}
+            heading={bannerHeading}
             tone={actionData.ok ? "success" : "warning"}
           >
             {actionData.message}
@@ -118,14 +144,57 @@ export default function PurchaseOrderList() {
       </s-section>
 
       {data.orders.length === 0 ? (
-        <s-section heading="No purchase orders">
+        <s-section heading="Nothing on the dock">
           <s-box padding="large" borderWidth="base" borderRadius="base" background="subdued">
             <s-stack gap="base">
               <s-heading>Nothing on the dock</s-heading>
               <s-paragraph>
-                Demo seed should create three POs. If you are on a live shop,
-                create app-owned POs later or sync inbound inventory transfers.
+                Sync inbound transfers from Shopify, or seed three sample POs to
+                practice receive → labels → cost.
               </s-paragraph>
+              <div className="rk-empty-actions">
+                <Form method="post">
+                  <input type="hidden" name="intent" value="sync" />
+                  <s-button
+                    type="submit"
+                    variant="primary"
+                    {...(syncing ? { loading: true } : {})}
+                    disabled={data.demo}
+                  >
+                    Sync Shopify transfers
+                  </s-button>
+                </Form>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="seed" />
+                  <s-button
+                    type="submit"
+                    variant="secondary"
+                    {...(seeding ? { loading: true } : {})}
+                  >
+                    Seed sample receives
+                  </s-button>
+                </Form>
+                <s-button href="/app/help" variant="tertiary">
+                  How to get your first receive
+                </s-button>
+              </div>
+              <s-box paddingBlock="small">
+                <s-heading>First receive</s-heading>
+                <ol className="rk-steps">
+                  <li>
+                    Sync Shopify transfers, or seed three sample POs for this
+                    shop.
+                  </li>
+                  <li>
+                    Open Receive, enter accepted quantity and unit cost, then
+                    lock the receipt.
+                  </li>
+                  <li>
+                    Print barcode labels once quantity received is greater than
+                    zero.
+                  </li>
+                </ol>
+              </s-box>
             </s-stack>
           </s-box>
         </s-section>
@@ -209,6 +278,9 @@ export default function PurchaseOrderList() {
         <s-paragraph>
           Forecasting, full WMS, transfers suite, B2B portal, reorder,
           catalogs, net terms, and AI features.
+        </s-paragraph>
+        <s-paragraph>
+          <Link to="/app/help">How to get your first receive →</Link>
         </s-paragraph>
         <s-paragraph>
           <Link to="/">How to connect a Partner store →</Link>

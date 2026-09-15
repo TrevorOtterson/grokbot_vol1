@@ -20,7 +20,7 @@
     "graphql-codegen": "graphql-codegen",
     "vite": "vite",
     "typecheck": "react-router typegen && tsc --noEmit",
-    "test": "tsx --test app/lib/receive.test.ts app/lib/money.test.ts"
+    "test": "tsx --test app/lib/receive.test.ts app/lib/money.test.ts app/lib/seed.test.ts"
   },
   "type": "module",
   "engines": {

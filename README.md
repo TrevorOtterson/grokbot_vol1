@@ -81,13 +81,26 @@ Copy `.env.example`. `shopify app dev` overwrites several of these.
 
 1. `npm run dev` and install ReceiveKit on the development store.
 2. Open the app from **Apps** in Shopify admin. You should see the PO list (empty until you seed or sync).
-3. Demo seed only runs automatically in `DEMO_MODE`. On a live shop, click **Sync Shopify transfers** to import inbound `inventoryTransfers` as receive documents, or insert rows in SQLite for a dry run.
+3. Demo seed only auto-runs in `DEMO_MODE`. On a live Partner/dev store with an empty dock, use the empty-state CTAs:
+   - **Sync Shopify transfers** — import inbound `inventoryTransfers` as receive documents.
+   - **Seed sample receives** — load three practice POs (open / partial / complete) for **this shop**. Ids are scoped per shop domain so they do not collide with the global demo rows (`po_open_apex`, …).
+   - **How to get your first receive** — 3-step checklist and short FAQ (`/app/help`).
+   If sync returns nothing, the shop has no open inbound transfers — seed for practice, then receive PO-1042.
 4. Open a PO → enter accept quantities (or **Fill remaining**) → set unit cost → **Receive and lock cost**.
 5. Print labels: 3-up letter sheet, CODE128, browser Print to PDF.
 6. **Billing**: pick Dock/Floor/Yard. Approve the **test** recurring charge. You should return to `/app/billing`.
 7. Confirm in Shopify admin that `InventoryItem` unit cost changed **only if** the line had an InventoryItem GID (imported transfers do; demo-only lines do not).
 
 To reset demo data, delete `prisma/dev.sqlite` and run `npm run setup`.
+
+### QA on receivekit-dev
+
+Use a Partner development store (commonly `receivekit-dev.myshopify.com`) with **zero** ReceiveKit POs:
+
+1. `npm run dev`, install/open the app from **Apps**. Confirm the empty dock: **Sync Shopify transfers**, **Seed sample receives**, **How to get your first receive**, plus the inline 3-step checklist.
+2. Click **Seed sample receives**. You should land on three POs (PO-1042 open, PO-1038 partial, PO-1021 received) and a success banner: “3 sample POs ready — open PO-1042 to receive.” Seed must not unique-constraint against the demo catalog — sample ids are suffixed per shop.
+3. Open PO-1042 → receive a line → print labels. Seed button is gone once any PO exists.
+4. Open **First receive** (`/app/help`) and **Billing**. Floor must not mention test-mode billing.
 
 ## How receive writes to Shopify
 

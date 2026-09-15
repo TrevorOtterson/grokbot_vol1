@@ -86,11 +86,24 @@ body {
   background: #1a7f37;
 }
 
-.rk-actions {
+.rk-actions,
+.rk-empty-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
+}
+
+.rk-steps {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+  color: #303030;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.rk-steps li + li {
+  margin-top: 0.4rem;
 }
 
 .rk-note {
