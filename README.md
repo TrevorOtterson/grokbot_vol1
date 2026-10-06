@@ -153,22 +153,22 @@ Use a Partner development store (commonly `receivekit-dev.myshopify.com`) with *
 When a store is connected, a receive:
 
 1. Always writes an immutable `Receipt` + `ReceiptLine` in this app (unit cost + PO-weighted average).
-2. If the line has `inventoryItemGid` and a location: `inventoryAdjustQuantities` with reason `received` against `available`.
+2. If the line has `inventoryItemGid` and a location: `inventoryAdjustQuantities` with reason `received` against `available`. From Admin API 2026-04 this call must send `@idempotent` (a new key per adjustment) and `changeFromQuantity`. ReceiveKit passes `null` so the delta still applies without a compare-and-swap against on-hand quantity.
 3. If the line has `inventoryItemGid`: `inventoryItemUpdate` with `input.cost` set to the **PO-weighted average** after this receipt.
 
 Partial receives are first-class: remaining qty stays open until ordered == received.
 
 ## API gaps (honest)
 
-Shopify Admin GraphQL as of API version **2025-10** (`ApiVersion.October25`):
+Shopify Admin GraphQL as of API version **2026-10** (`ADMIN_API_VERSION` in `app/lib/api-version.ts`). Webhook subscriptions use the same version in `shopify.app.toml`. That TOML value is applied by `shopify app deploy`. The runtime client version is applied by a Fly redeploy.
 
 | Need | What exists | Gap |
 | --- | --- | --- |
-| List/create merchant POs | Native POs exist in **Shopify admin** after Stocky. Public **read** is `inventoryPurchaseOrder(s)` on **`unstable`** only, behind the [Physical inventory feature preview](https://shopify.dev/docs/apps/build/orders-fulfillment/inventory-management-apps/physical-inventory-feature-preview). | No stable PO CRUD. **No public receive-on-PO mutation.** |
+| List/create merchant POs | Native POs exist in **Shopify admin** after Stocky. `inventoryPurchaseOrders` is on the 2026-10 schema and on **`unstable`**. Sync still calls **`unstable`** and does not request `read_inventory_purchase_orders` (Physical inventory feature preview). The read selects `origin.supplierName` (`supplier` is gone). | No PO create/update in this app. **No public receive-on-PO mutation.** |
 | Receive goods | [Inventory transfers + shipments](https://shopify.dev/docs/api/admin-graphql/latest/mutations/inventoryShipmentReceive): `inventoryShipmentReceive`, `inventoryShipmentCreate`. Admin help: receiving happens on the **linked transfer**, not the PO. | Merchant POs and transfers are separate objects. This app models POs itself and can import transfers as receive documents. |
 | Increase on-hand without a transfer | `inventoryAdjustQuantities` (`reason: received`) | Requires location + InventoryItem IDs. |
 | Lock unit / average cost | `inventoryItemUpdate(input: { cost })` writes `InventoryItem.unitCost`. | **Last write wins.** There is no public “lock this receipt into Shopify’s average cost ledger” mutation. ReceiveKit stores the receipt unit cost and writes a PO-weighted average to `cost`. That is not shop-wide moving average (it ignores stock not on this PO). |
-| Barcode labels | None as a Shopify primitive | HTML sheet + [JsBarcode](https://github.com/lindell/JsBarcode) CODE128. Print or Save as PDF. No ZPL/printer SDK in this MVP. |
+| Barcode labels | `ProductVariant.barcodes` (2026-10). Transfer sync stores the first value. `barcode` is deprecated and is not read. | HTML sheet + [JsBarcode](https://github.com/lindell/JsBarcode) CODE128 of that one value, falling back to SKU. No barcode picker. No ZPL/printer SDK in this MVP. |
 
 ReceiveKit therefore:
 
@@ -207,7 +207,7 @@ Not required to run the MVP. Needed before a public listing:
 
 ## Stack
 
-Official **Shopify app template — React Router 7** (current CLI default; successor to the Remix template). Polaris web components, App Bridge, Prisma (SQLite locally, Postgres on Fly), Admin GraphQL 2025-10.
+Official **Shopify app template — React Router 7** (current CLI default; successor to the Remix template). Polaris web components, App Bridge, Prisma (SQLite locally, Postgres on Fly), Admin GraphQL 2026-10.
 
 ## License
 
