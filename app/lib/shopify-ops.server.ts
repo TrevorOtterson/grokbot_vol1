@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export type ShopifyAdmin = {
   graphql: (
     query: string,
@@ -40,7 +42,13 @@ const TRANSFERS_QUERY = `#graphql
               id
               sku
               unitCost { amount currencyCode }
-              variant { id barcode displayName }
+              variants(first: 1) {
+                nodes {
+                  id
+                  displayName
+                  barcodes(first: 1) { nodes { value } }
+                }
+              }
             }
           }
         }
@@ -58,8 +66,8 @@ const LOCATIONS_QUERY = `#graphql
 `;
 
 const ADJUST_QTY = `#graphql
-  mutation ReceiveKitAdjust($input: InventoryAdjustQuantitiesInput!) {
-    inventoryAdjustQuantities(input: $input) {
+  mutation ReceiveKitAdjust($input: InventoryAdjustQuantitiesInput!, $idempotencyKey: String!) {
+    inventoryAdjustQuantities(input: $input) @idempotent(key: $idempotencyKey) {
       userErrors { field message }
     }
   }
@@ -81,7 +89,7 @@ const NATIVE_POS_QUERY = `#graphql
         id
         name
         status
-        supplier { name }
+        origin { supplierName }
         lineItems(first: 50) {
           nodes { title supplierSku totalQuantity }
         }
@@ -105,7 +113,10 @@ async function graphqlJson(
 }
 
 function userErrorText(errors: Array<{ message?: string }> | undefined) {
-  return (errors ?? []).map((error) => error.message).filter(Boolean).join("; ");
+  return (errors ?? [])
+    .map((error) => error.message)
+    .filter(Boolean)
+    .join("; ");
 }
 
 export async function listShopifyLocations(admin: ShopifyAdmin) {
@@ -114,7 +125,9 @@ export async function listShopifyLocations(admin: ShopifyAdmin) {
     const nodes =
       (
         json.data as {
-          locations?: { nodes: Array<{ id: string; name: string; isActive: boolean }> };
+          locations?: {
+            nodes: Array<{ id: string; name: string; isActive: boolean }>;
+          };
         }
       )?.locations?.nodes ?? [];
     return nodes.filter((location) => location.isActive);
@@ -168,7 +181,11 @@ export async function tryListNativePurchaseOrders(options: {
         inventoryPurchaseOrders?: { nodes: unknown[] };
       }
     )?.inventoryPurchaseOrders?.nodes ?? [];
-  return { ok: true as const, message: `Read ${nodes.length} native POs.`, nodes };
+  return {
+    ok: true as const,
+    message: `Read ${nodes.length} native POs.`,
+    nodes,
+  };
 }
 
 export async function writeReceiveToShopify(options: {
@@ -195,6 +212,7 @@ export async function writeReceiveToShopify(options: {
     if (line.inventoryItemGid && options.locationGid) {
       try {
         const qtyJson = await graphqlJson(options.admin, ADJUST_QTY, {
+          idempotencyKey: randomUUID(),
           input: {
             reason: "received",
             name: "available",
@@ -203,13 +221,18 @@ export async function writeReceiveToShopify(options: {
                 inventoryItemId: line.inventoryItemGid,
                 locationId: options.locationGid,
                 delta: line.quantityAccepted,
+                // Required at runtime since 2026-04. Null opts out of
+                // compare-and-swap; this receive does not know on-hand qty.
+                changeFromQuantity: null,
               },
             ],
           },
         });
         const qtyErrors = (
           qtyJson.data as {
-            inventoryAdjustQuantities?: { userErrors: Array<{ message: string }> };
+            inventoryAdjustQuantities?: {
+              userErrors: Array<{ message: string }>;
+            };
           }
         )?.inventoryAdjustQuantities?.userErrors;
         const qtyErrorText =

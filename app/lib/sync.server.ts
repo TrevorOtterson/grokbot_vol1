@@ -24,7 +24,10 @@ export async function syncFromShopify(options: {
     const transfers = (await listInboundTransfers(options.admin)) as Array<{
       id: string;
       status?: string;
-      destination?: { name?: string; location?: { id?: string; name?: string } };
+      destination?: {
+        name?: string;
+        location?: { id?: string; name?: string };
+      };
       origin?: { name?: string };
       lineItems?: {
         nodes: Array<{
@@ -35,7 +38,13 @@ export async function syncFromShopify(options: {
             id?: string;
             sku?: string;
             unitCost?: { amount?: string };
-            variant?: { id?: string; barcode?: string; displayName?: string };
+            variants?: {
+              nodes?: Array<{
+                id?: string;
+                displayName?: string;
+                barcodes?: { nodes?: Array<{ value?: string | null } | null> };
+              } | null>;
+            };
           };
         }>;
       };
@@ -67,27 +76,29 @@ export async function syncFromShopify(options: {
           shopifyTransferGid: transfer.id,
           locationGid: transfer.destination?.location?.id,
           lines: {
-            create: lines.map((line) => ({
-              id: `ln_${line.id.split("/").pop()}`,
-              sku: line.inventoryItem?.sku || "NO-SKU",
-              title:
-                line.inventoryItem?.variant?.displayName ||
-                line.title ||
-                "Untitled",
-              barcode: line.inventoryItem?.variant?.barcode || null,
-              quantityOrdered: line.totalQuantity ?? 0,
-              quantityReceived: 0,
-              unitCost: line.inventoryItem?.unitCost?.amount || "0.0000",
-              inventoryItemGid: line.inventoryItem?.id || null,
-              variantGid: line.inventoryItem?.variant?.id || null,
-              shopifyLineGid: line.id,
-            })),
+            create: lines.map((line) => {
+              const variant = line.inventoryItem?.variants?.nodes?.[0];
+              return {
+                id: `ln_${line.id.split("/").pop()}`,
+                sku: line.inventoryItem?.sku || "NO-SKU",
+                title: variant?.displayName || line.title || "Untitled",
+                barcode: variant?.barcodes?.nodes?.[0]?.value || null,
+                quantityOrdered: line.totalQuantity ?? 0,
+                quantityReceived: 0,
+                unitCost: line.inventoryItem?.unitCost?.amount || "0.0000",
+                inventoryItemGid: line.inventoryItem?.id || null,
+                variantGid: variant?.id || null,
+                shopifyLineGid: line.id,
+              };
+            }),
           },
         },
       });
       imported += 1;
     }
-    notes.push(`Imported ${imported} inventory transfer(s) as receive documents.`);
+    notes.push(
+      `Imported ${imported} inventory transfer(s) as receive documents.`,
+    );
   } catch (error) {
     notes.push(
       `Transfer sync failed: ${error instanceof Error ? error.message : "unknown error"}. Needs read_inventory_transfers.`,
@@ -109,7 +120,9 @@ export async function syncFromShopify(options: {
       );
     }
   } else {
-    notes.push("Skipped native PO query (no offline access token on this request).");
+    notes.push(
+      "Skipped native PO query (no offline access token on this request).",
+    );
   }
 
   const lastSyncNote = notes.join(" ");
