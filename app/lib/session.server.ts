@@ -1,21 +1,9 @@
 import { authenticate } from "../shopify.server";
+import type { BillingGateway } from "./billing.server";
 import { DEMO_SHOP } from "./constants";
 import { billingIsTest, isDemoMode } from "./demo.server";
 import { ensureDemoSeed } from "./seed.server";
 import type { ShopifyAdmin } from "./shopify-ops.server";
-
-type BillingApi = {
-  check: (options: {
-    plans: string[];
-    isTest?: boolean;
-  }) => Promise<{ appSubscriptions: Array<{ name?: string }> }>;
-  request: (options: {
-    plan: string;
-    isTest?: boolean;
-    trialDays?: number;
-    returnUrl?: string;
-  }) => Promise<never>;
-};
 
 export type ShopContext = {
   shop: string;
@@ -23,7 +11,7 @@ export type ShopContext = {
   apiKey: string;
   embedded: boolean;
   admin: ShopifyAdmin | null;
-  billing: BillingApi | null;
+  billing: BillingGateway | null;
   session: { shop: string; accessToken?: string } | null;
   billingTest: boolean;
 };
@@ -53,7 +41,7 @@ export async function requireShop(request: Request): Promise<ShopContext> {
     apiKey,
     embedded: true,
     admin,
-    billing: billing as unknown as BillingApi,
+    billing: billing as unknown as BillingGateway,
     session,
     billingTest,
   };

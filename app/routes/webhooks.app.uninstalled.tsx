@@ -1,17 +1,24 @@
 import type { ActionFunctionArgs } from "react-router";
-import { authenticate } from "../shopify.server";
-import db from "../db.server";
+import {
+  authenticUninstallShop,
+  clearShopInstallState,
+} from "../lib/billing.server";
+import { apiSecretKey, authenticate } from "../shopify.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { shop, session, topic } = await authenticate.webhook(request);
+  // Drop sessions before authenticate.webhook loads them. With expiring
+  // offline tokens, that load refreshes the token; after uninstall the refresh
+  // fails and the handler never runs, leaving a revoked session that blocks
+  // a new charge on reinstall. HMAC is checked here and again below.
+  const earlyShop = await authenticUninstallShop(request.clone(), apiSecretKey);
+  if (earlyShop) {
+    await clearShopInstallState(earlyShop);
+  }
+
+  const { shop, topic } = await authenticate.webhook(request);
 
   console.log(`Received ${topic} webhook for ${shop}`);
-
-  // Webhook requests can trigger multiple times and after an app has already been uninstalled.
-  // If this webhook already ran, the session may have been deleted previously.
-  if (session) {
-    await db.session.deleteMany({ where: { shop } });
-  }
+  await clearShopInstallState(shop);
 
   return new Response();
 };
